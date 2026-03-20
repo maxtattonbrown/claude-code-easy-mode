@@ -39,6 +39,23 @@ if [[ "$1" == "--uninstall" ]]; then
       else
         rm -f "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
       fi
+    elif command -v python3 &>/dev/null; then
+      python3 -c "
+import json, sys, os
+p = '$SETTINGS_FILE'
+with open(p) as f: s = json.load(f)
+s.pop('statusLine', None)
+ep = s.get('enabledPlugins', {})
+for k in ['frontend-design@claude-plugins-official','document-skills@anthropic-agent-skills','explanatory-output-style@claude-code-plugins']:
+    ep.pop(k, None)
+if not ep: s.pop('enabledPlugins', None)
+if s:
+    with open(p, 'w') as f: json.dump(s, f, indent=2)
+else:
+    os.remove(p)
+"
+    else
+      rm -f "$SETTINGS_FILE"
     fi
     echo -e "  ${G}✓${R} Settings cleaned up"
   fi
@@ -63,6 +80,7 @@ if [[ "$1" == "--uninstall" ]]; then
   [[ -f "$HOME/.config/ghostty/themes/friendly-terminal" ]] && rm "$HOME/.config/ghostty/themes/friendly-terminal"
   [[ -f "$HOME/.warp/themes/friendly-terminal.yaml" ]] && rm "$HOME/.warp/themes/friendly-terminal.yaml"
   [[ -f "$HOME/.config/kitty/themes/friendly-terminal.conf" ]] && rm "$HOME/.config/kitty/themes/friendly-terminal.conf"
+  [[ -f "$HOME/.config/alacritty/friendly-terminal.toml" ]] && rm "$HOME/.config/alacritty/friendly-terminal.toml"
 
   echo -e "  ${G}✓${R} All Clawd Code files removed"
   echo ""
@@ -181,7 +199,9 @@ echo -e "  ${G}✓${R} Welcome skill installed — type ${C}/welcome${R} in Clau
 # ─── Step 5: Install starter CLAUDE.md ───────────────────────
 echo -e "  ${D}Setting up beginner-friendly instructions...${R}"
 
-if [[ -f "$GLOBAL_CLAUDE_MD" ]]; then
+if [[ -f "$GLOBAL_CLAUDE_MD" ]] && grep -q "Installed by Clawd Code" "$GLOBAL_CLAUDE_MD" 2>/dev/null; then
+  echo -e "  ${G}✓${R} Beginner instructions already installed"
+elif [[ -f "$GLOBAL_CLAUDE_MD" ]]; then
   # Back up existing CLAUDE.md
   cp "$GLOBAL_CLAUDE_MD" "$CLAUDE_MD_BACKUP"
   # Append our instructions

@@ -2,13 +2,28 @@
 
 The friendliest way to use [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
+## Before you start
+
+You'll need Claude Code installed first. If you haven't done that yet:
+
+1. Open your terminal (on Mac, search for "Terminal" in Spotlight)
+2. Install Claude Code by pasting this and pressing Enter:
+   ```bash
+   npm install -g @anthropic-ai/claude-code
+   ```
+3. Run `claude` once to log in and set up your account
+
+That's the hard bit done. Now make it friendly:
+
 ## Install
+
+Paste this into your terminal and press Enter:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maxtattonbrown/clawd-code/main/install.sh | bash
 ```
 
-One command. That's it.
+It won't change anything you can't undo. One command, done in seconds.
 
 ## What it does
 
@@ -52,9 +67,9 @@ Restores your original settings. Nothing permanent.
 
 ## Requirements
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed
 - macOS or Linux
-- `jq` or `python3` (for the status bar — most Macs have python3)
+- [Node.js](https://nodejs.org/) (for the `npm install` step above — download the LTS version if you don't have it)
+- `jq` or `python3` for the status bar (most Macs already have python3)
 
 ## Credits
 
