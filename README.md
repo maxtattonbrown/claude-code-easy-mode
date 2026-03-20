@@ -7,11 +7,24 @@ The friendliest way to use [Claude Code](https://docs.anthropic.com/en/docs/clau
 You'll need Claude Code installed first. If you haven't done that yet:
 
 1. Open your terminal (on Mac, search for "Terminal" in Spotlight)
-2. Install Claude Code by pasting this and pressing Enter:
+2. Install the Xcode command line tools — paste this and press Enter:
+   ```bash
+   xcode-select --install
+   ```
+   A dialog will pop up. Click "Install" and wait for it to finish (5–30 minutes depending on your internet — it can look stuck, but it's usually still working).
+3. Install Homebrew (a package manager for Mac):
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+4. Install Node.js:
+   ```bash
+   brew install node
+   ```
+5. Install Claude Code:
    ```bash
    npm install -g @anthropic-ai/claude-code
    ```
-3. Run `claude` once to log in and set up your account
+6. Run `claude` once to log in and set up your account
 
 That's the hard bit done. Now make it friendly:
 
@@ -68,7 +81,6 @@ Restores your original settings. Nothing permanent.
 ## Requirements
 
 - macOS or Linux
-- [Node.js](https://nodejs.org/) (for the `npm install` step above — download the LTS version if you don't have it)
 - `jq` or `python3` for the status bar (most Macs already have python3)
 
 ## Credits
