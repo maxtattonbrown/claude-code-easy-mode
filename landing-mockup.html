@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code: Easy Mode</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #F5F0E8;
+    color: #2D2B26;
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem;
+  }
+
+  .terminal {
+    max-width: 640px;
+    width: 100%;
+    margin: 2rem auto;
+  }
+
+  /* Terminal window chrome */
+  .window {
+    border: 2px solid #C4B8A4;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(45, 43, 38, 0.08);
+  }
+
+  .titlebar {
+    background: #E8E0D2;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #C4B8A4;
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .dot.red { background: #A15040; }
+  .dot.yellow { background: #8E7B45; }
+  .dot.green { background: #6B8E5B; }
+
+  .titlebar-text {
+    flex: 1;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #8A7E6E;
+    margin-right: 52px; /* offset for dots */
+  }
+
+  .screen {
+    background: #F5F0E8;
+    padding: 2rem;
+    min-height: 400px;
+  }
+
+  /* ASCII art */
+  .ascii {
+    color: #8A7E6E;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    white-space: pre;
+  }
+
+  /* Heading */
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    text-align: center;
+  }
+
+  h1 .accent { color: #DA7756; }
+
+  .tagline {
+    text-align: center;
+    color: #8A7E6E;
+    font-size: 0.8rem;
+    margin-bottom: 2rem;
+  }
+
+  /* Steps */
+  .step {
+    margin-bottom: 1.5rem;
+  }
+
+  .step-label {
+    font-size: 0.75rem;
+    color: #8A7E6E;
+    margin-bottom: 0.5rem;
+  }
+
+  .step-label .num {
+    color: #6B8E5B;
+    font-weight: 600;
+  }
+
+  .cmd-box {
+    background: #2D2B26;
+    color: #F5F0E8;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-size: 0.8rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+    overflow-x: auto;
+  }
+
+  .cmd-box:hover {
+    box-shadow: 0 0 0 2px #DA7756;
+  }
+
+  .cmd-box .prompt {
+    color: #6B8E5B;
+    user-select: none;
+    flex-shrink: 0;
+  }
+
+  .cmd-box .cmd {
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  .cmd-box .copy-btn {
+    background: none;
+    border: 1px solid #5E5A52;
+    color: #8A7E6E;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .cmd-box .copy-btn:hover {
+    border-color: #DA7756;
+    color: #DA7756;
+  }
+
+  .cmd-box .copy-btn.copied {
+    border-color: #6B8E5B;
+    color: #6B8E5B;
+  }
+
+  .step-hint {
+    font-size: 0.7rem;
+    color: #A89E8E;
+    margin-top: 0.4rem;
+  }
+
+  .step-hint a {
+    color: #DA7756;
+    text-decoration: none;
+  }
+  .step-hint a:hover {
+    text-decoration: underline;
+  }
+
+  /* Divider */
+  .divider {
+    border: none;
+    border-top: 1px dashed #C4B8A4;
+    margin: 1.5rem 0;
+  }
+
+  /* Features */
+  .features {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .feature {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .feature .icon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .feature .desc {
+    color: #5E5A52;
+  }
+
+  .feature .desc strong {
+    color: #2D2B26;
+  }
+
+  /* Status bar demo */
+  .statusbar-demo {
+    background: #2D2B26;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .statusbar-line {
+    font-size: 0.7rem;
+    color: #F5F0E8;
+    padding: 0.2rem 0;
+    opacity: 0;
+    animation: fadeIn 0.5s forwards;
+  }
+
+  .statusbar-line:nth-child(1) { animation-delay: 0.5s; }
+  .statusbar-line:nth-child(2) { animation-delay: 1s; }
+  .statusbar-line:nth-child(3) { animation-delay: 1.5s; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.7rem;
+    color: #A89E8E;
+  }
+
+  .footer a {
+    color: #DA7756;
+    text-decoration: none;
+  }
+
+  /* CCC badge */
+  .ccc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 1rem;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #C4B8A4;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    color: #8A7E6E;
+  }
+
+  .ccc-badge a {
+    color: #DA7756;
+    text-decoration: none;
+  }
+
+  /* Colour strip */
+  .palette {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 1.5rem;
+  }
+
+  .swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="terminal">
+  <div class="window">
+    <div class="titlebar">
+      <div class="dot red"></div>
+      <div class="dot yellow"></div>
+      <div class="dot green"></div>
+      <div class="titlebar-text">Terminal</div>
+    </div>
+    <div class="screen">
+
+      <div class="ascii">  ) ) )
+ (  (  (
+┌───────┐╮
+│~~~~~~~││  Claude Code:
+│~~~~~~~││  Easy Mode
+│~~~~~~~││
+└───────┘╯</div>
+
+      <h1>Claude Code: <span class="accent">Easy Mode</span></h1>
+      <p class="tagline">One command. Beginner-friendly in seconds.</p>
+
+      <div class="step">
+        <div class="step-label"><span class="num">1</span> &mdash; <a href="https://claude.ai/referral/hWvMMltr7Q" style="color:#DA7756;text-decoration:none">Sign up for Claude</a> (free week of Claude Code included)</div>
+      </div>
+
+      <div class="step">
+        <div class="step-label"><span class="num">2</span> &mdash; Open your terminal and paste this</div>
+        <div class="cmd-box" onclick="copyCmd(this, 'curl -fsSL https://raw.githubusercontent.com/maxtattonbrown/claude-code-easy-mode/main/install.sh | bash')">
+          <span class="prompt">$</span>
+          <span class="cmd">curl -fsSL https://raw.githubusercontent.com/maxtattonbrown/claude-code-easy-mode/main/install.sh | bash</span>
+          <button class="copy-btn">copy</button>
+        </div>
+        <div class="step-hint">Installs Claude Code if you don't have it, then sets up Easy Mode.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-label"><span class="num">3</span> &mdash; Type <code style="color:#DA7756">claude</code> and say hello</div>
+        <div class="step-hint">Claude will introduce itself and suggest things to try.</div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="features">
+        <div class="feature">
+          <span class="icon">🎨</span>
+          <span class="desc"><strong>Warm theme</strong> — parchment background, soft text, no black void</span>
+        </div>
+        <div class="feature">
+          <span class="icon">🚦</span>
+          <span class="desc"><strong>Status bar</strong> — tips when you're fine, warnings when context is low</span>
+        </div>
+        <div class="feature">
+          <span class="icon">👋</span>
+          <span class="desc"><strong>Welcome skill</strong> — type /welcome for three things to try</span>
+        </div>
+        <div class="feature">
+          <span class="icon">🧠</span>
+          <span class="desc"><strong>Smart defaults</strong> — Claude explains what it's doing in plain English</span>
+        </div>
+        <div class="feature">
+          <span class="icon">🔌</span>
+          <span class="desc"><strong>Useful plugins</strong> — web design, documents, and explanatory mode</span>
+        </div>
+      </div>
+
+      <div class="statusbar-demo">
+        <div class="statusbar-line">🟢 Try: "make me a website about dogs" · my-folder</div>
+        <div class="statusbar-line">🟡 Context filling up — type /compact · my-folder</div>
+        <div class="statusbar-line">🔴 Running low on context — type /compact now · my-folder</div>
+      </div>
+
+      <div class="palette">
+        <div class="swatch" style="background:#A15040"></div>
+        <div class="swatch" style="background:#6B8E5B"></div>
+        <div class="swatch" style="background:#8E7B45"></div>
+        <div class="swatch" style="background:#5B7E9E"></div>
+        <div class="swatch" style="background:#7E5E8A"></div>
+        <div class="swatch" style="background:#5E8E8A"></div>
+        <div class="swatch" style="background:#DA7756"></div>
+        <div class="swatch" style="background:#7B9E5B"></div>
+        <div class="swatch" style="background:#9E8E5B"></div>
+        <div class="swatch" style="background:#6B8EB5"></div>
+        <div class="swatch" style="background:#9E6B8E"></div>
+        <div class="swatch" style="background:#6BAE9E"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="text-align:center">
+    <div class="ccc-badge">
+      from <a href="https://claudecodecurious.com">Claude Code Curious</a>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/maxtattonbrown/claude-code-easy-mode">GitHub</a> ·
+    Made by <a href="https://github.com/maxtattonbrown">Max Tatton-Brown</a>
+  </div>
+
+</div>
+
+<script>
+function copyCmd(box, cmd) {
+  navigator.clipboard.writeText(cmd).then(() => {
+    const btn = box.querySelector('.copy-btn');
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+</script>
+
+</body>
+</html>

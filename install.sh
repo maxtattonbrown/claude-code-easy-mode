@@ -99,6 +99,40 @@ echo -e "${C}│${R}                                        ${C}│${R}"
 echo -e "${C}╰────────────────────────────────────────╯${R}"
 echo ""
 
+# ─── Step 0: Check for Claude Code ────────────────────────────
+if ! command -v claude &>/dev/null; then
+  echo -e "  ${D}Claude Code not found — installing it first...${R}"
+  echo ""
+  echo -e "  ${D}Don't have a Claude account yet?${R}"
+  echo -e "  ${C}https://claude.ai/referral/hWvMMltr7Q${R}"
+  echo -e "  ${D}(this link gives you a free week of Claude Code)${R}"
+  echo ""
+
+  if curl -fsSL https://claude.ai/install.sh | bash; then
+    echo ""
+    echo -e "  ${G}✓${R} Claude Code installed"
+
+    # Reload PATH so we can find claude
+    export PATH="$HOME/.claude/bin:$HOME/.local/bin:$PATH"
+    hash -r 2>/dev/null
+
+    if ! command -v claude &>/dev/null; then
+      echo -e "  ${Y}!${R} Claude Code installed but not found in PATH yet."
+      echo -e "    Close this terminal, open a new one, and run this installer again."
+      exit 0
+    fi
+  else
+    echo ""
+    echo -e "  ${Y}!${R} Couldn't install Claude Code automatically."
+    echo -e "    Visit ${C}https://docs.anthropic.com/en/docs/claude-code${R} for help."
+    exit 1
+  fi
+
+  echo ""
+else
+  echo -e "  ${G}✓${R} Claude Code found"
+fi
+
 # ─── Step 1: Detect terminal ────────────────────────────────
 terminal="unknown"
 terminal_name="your terminal"
@@ -138,17 +172,21 @@ case "$terminal" in
   iterm2)
     curl -fsSL "$REPO_URL/themes/Friendly%20Terminal.itermcolors" > "/tmp/Friendly Terminal.itermcolors"
     open "/tmp/Friendly Terminal.itermcolors" 2>/dev/null || true
-    echo -e "  ${G}✓${R} Theme imported into iTerm2"
-    echo -e "  ${Y}→${R} In iTerm2: Settings → Profiles → Colors → Color Presets → Friendly Terminal"
+    sleep 1
+    # Try to apply the theme to the current session via AppleScript
+    osascript -e 'tell application "iTerm2" to tell current session of current window to set color preset to "Friendly Terminal"' 2>/dev/null || true
+    echo -e "  ${G}✓${R} Theme applied"
     ;;
   terminal-app)
     curl -fsSL "$REPO_URL/themes/Friendly%20Terminal.terminal" > "/tmp/Friendly Terminal.terminal"
     open "/tmp/Friendly Terminal.terminal" 2>/dev/null || true
     sleep 1
+    # Set as default for new windows
     defaults write com.apple.Terminal "Default Window Settings" -string "Friendly Terminal" 2>/dev/null
     defaults write com.apple.Terminal "Startup Window Settings" -string "Friendly Terminal" 2>/dev/null
-    echo -e "  ${G}✓${R} Theme installed and set as default"
-    echo -e "  ${D}(new Terminal windows will use the warm theme)${R}"
+    # Switch the current window to the new theme — instant transformation
+    osascript -e 'tell application "Terminal" to set current settings of front window to settings set "Friendly Terminal"' 2>/dev/null || true
+    echo -e "  ${G}✓${R} Theme applied"
     ;;
   warp)
     mkdir -p "$HOME/.warp/themes"
@@ -273,9 +311,9 @@ fi
 
 # ─── Done ────────────────────────────────────────────────────
 echo ""
-echo -e "${G}All done!${R} 🐾"
+echo -e "${G}All done!${R}"
 echo ""
-echo -e "  To get started, type ${C}claude${R} and press Enter."
+echo -e "  Type ${C}claude${R} and press Enter to get started."
 echo -e "  Claude will introduce itself and suggest things to try."
 echo ""
 echo -e "  ${D}To undo everything later, see the README at${R}"
