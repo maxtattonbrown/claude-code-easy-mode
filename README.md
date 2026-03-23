@@ -1,39 +1,43 @@
 # 🐾 Clawd Code
 
-The friendliest way to use [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
+The nicest, simplest way to get started with [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
 ![Clawd Code in action — warm parchment theme with helpful status bar](screenshot.png)
 
 ## Before you start
 
-You'll need a Claude account and Claude Code installed. If you haven't done that yet:
+You'll need a Claude account and Claude Code installed. It's fast and easy:
 
-1. [Sign up for Claude](https://claude.ai/referral/hWvMMltr7Q) if you don't have an account
-2. Open your terminal (on Mac, search for "Terminal" in Spotlight)
+1. [Sign up for Claude](https://claude.ai/referral/hWvMMltr7Q) if you haven't already. This link should give you a free week of Claude Code.
+2. Open your terminal (on Mac, search for "Terminal" in Spotlight or find it in Applications/Utilities/)
 3. Copy this whole line, paste it into the terminal, and press Enter:
    ```bash
    curl -fsSL https://claude.ai/install.sh | bash
    ```
    It looks cryptic but it's just downloading and running the official installer. Wait for it to finish.
-4. In the same window, type `claude` and press Enter to log in
+4. In the same window, type `claude` and press Enter to log in through your browser.
 
-That's the hard bit done. Now make it friendly:
+You now have Claude Code installed! Time to make it friendlier:
 
 ## Install
 
 Paste this into your terminal and press Enter:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/maxtattonbrown/clawd-code/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/maxtattonbrown/claude-code-easy-mode/main/install.sh | bash
 ```
 
 It won't change anything you can't undo. One command, done in seconds.
 
 ## What it does
 
-**1. Warm colour theme** — replaces the black void with a parchment background, soft text, and coral accents. Auto-detects your terminal (Terminal.app, Ghostty, iTerm2, Warp, Kitty, Alacritty).
+**1. A warm, friendly theme** — replaces the black void with a parchment background, soft text, and coral accents, just like Claude Desktop.
 
-**2. Helpful status bar** — a traffic light at the bottom that tells you what's going on:
+**2. Welcome skill** — type `/welcome` in Claude Code for a friendly introduction. Three things to try, no jargon.
+
+**3. Beginner-friendly instructions** — tells Claude to explain what it's doing, use simple language, and suggest next steps. Automatically applied to every session.
+
+**4. Helpful status bar** — a little assistant that makes suggestions around context and things to try.
 
 ```
 🟢 Try: "make me a website about dogs" · my-folder
@@ -43,11 +47,7 @@ It won't change anything you can't undo. One command, done in seconds.
 
 When everything's fine, it shows tips and suggestions. When your conversation is getting long, it tells you exactly what to do.
 
-**3. Welcome skill** — type `/welcome` in Claude Code for a friendly introduction. Three things to try, no jargon.
-
-**4. Beginner-friendly instructions** — tells Claude to explain what it's doing, use simple language, and suggest next steps. Automatically applied to every session.
-
-**5. Useful plugins** — enables frontend design (build web pages), document skills (PDFs, docs, spreadsheets), and explanatory mode (Claude narrates its thinking).
+**5. Useful plugins** — enables a handful of the best Claude plugins, including frontend design (build web pages), document skills (PDFs, docs, spreadsheets), and explanatory mode (Claude narrates its thinking).
 
 ## What's the status bar telling me?
 
@@ -59,8 +59,6 @@ The status bar watches this for you:
 - **🟡 Yellow** — conversation is getting long. Type `/compact` to let Claude summarise and free up space.
 - **🔴 Red** — you really need to type `/compact` now, or start a new conversation.
 
-You might also see **⚡ Fast mode** — this means Claude is running on a quicker but less capable model. Usually a plan limit thing, nothing you need to fix.
-
 ## Uninstall
 
 To remove everything and restore your original settings, paste this:
@@ -69,16 +67,12 @@ To remove everything and restore your original settings, paste this:
 <summary>Show uninstall command</summary>
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/maxtattonbrown/clawd-code/main/install.sh | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/maxtattonbrown/claude-code-easy-mode/main/install.sh | bash -s -- --uninstall
 ```
 
 </details>
 
 Nothing permanent — your original settings are backed up and restored.
-
-## Requirements
-
-- A Mac or Linux computer (everything else you need is already installed)
 
 ## Credits
 

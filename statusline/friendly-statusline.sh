@@ -1,5 +1,5 @@
 #!/bin/bash
-# ABOUTME: Clawd Code status line — traffic light context indicator with rotating tips for beginners.
+# ABOUTME: Claude Code Easy Mode status line — traffic light context indicator with rotating tips for beginners.
 # ABOUTME: Shows context health, model warnings, project name, and helpful suggestions. No special fonts needed.
 
 input=$(cat)

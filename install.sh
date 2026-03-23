@@ -1,5 +1,5 @@
 #!/bin/bash
-# ABOUTME: One-command installer for Clawd Code — makes Claude Code welcoming for beginners.
+# ABOUTME: One-command installer for Claude Code: Easy Mode — makes Claude Code welcoming for beginners.
 # ABOUTME: Installs colour theme, statusline, welcome skill, starter CLAUDE.md, and plugins. Reversible.
 
 set -e
@@ -11,19 +11,19 @@ C='\033[0;36m'  # cyan
 D='\033[0;90m'  # dim
 R='\033[0m'     # reset
 
-REPO_URL="https://raw.githubusercontent.com/maxtattonbrown/clawd-code/main"
+REPO_URL="https://raw.githubusercontent.com/maxtattonbrown/claude-code-easy-mode/main"
 CLAUDE_DIR="$HOME/.claude"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 SETTINGS_FILE="$CLAUDE_DIR/settings.json"
 STATUSLINE_FILE="$CLAUDE_DIR/friendly-statusline.sh"
 GLOBAL_CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
-BACKUP_FILE="$SETTINGS_FILE.clawd-backup"
-CLAUDE_MD_BACKUP="$GLOBAL_CLAUDE_MD.clawd-backup"
+BACKUP_FILE="$SETTINGS_FILE.easy-mode-backup"
+CLAUDE_MD_BACKUP="$GLOBAL_CLAUDE_MD.easy-mode-backup"
 
 # ─── Uninstall ──────────────────────────────────────────────
 if [[ "$1" == "--uninstall" ]]; then
   echo ""
-  echo -e "${C}Uninstalling Clawd Code...${R}"
+  echo -e "${C}Uninstalling Easy Mode...${R}"
 
   # Restore settings backup
   if [[ -f "$BACKUP_FILE" ]]; then
@@ -65,7 +65,7 @@ else:
     cp "$CLAUDE_MD_BACKUP" "$GLOBAL_CLAUDE_MD"
     rm "$CLAUDE_MD_BACKUP"
     echo -e "  ${G}✓${R} CLAUDE.md restored from backup"
-  elif [[ -f "$GLOBAL_CLAUDE_MD" ]] && grep -q "Installed by Clawd Code" "$GLOBAL_CLAUDE_MD" 2>/dev/null; then
+  elif [[ -f "$GLOBAL_CLAUDE_MD" ]] && grep -q "Installed by Easy Mode" "$GLOBAL_CLAUDE_MD" 2>/dev/null; then
     rm "$GLOBAL_CLAUDE_MD"
     echo -e "  ${G}✓${R} CLAUDE.md removed"
   fi
@@ -82,7 +82,7 @@ else:
   [[ -f "$HOME/.config/kitty/themes/friendly-terminal.conf" ]] && rm "$HOME/.config/kitty/themes/friendly-terminal.conf"
   [[ -f "$HOME/.config/alacritty/friendly-terminal.toml" ]] && rm "$HOME/.config/alacritty/friendly-terminal.toml"
 
-  echo -e "  ${G}✓${R} All Clawd Code files removed"
+  echo -e "  ${G}✓${R} All Easy Mode files removed"
   echo ""
   echo -e "${G}Done.${R} Your original settings are restored."
   echo ""
@@ -93,7 +93,7 @@ fi
 echo ""
 echo -e "${C}╭────────────────────────────────────────╮${R}"
 echo -e "${C}│${R}                                        ${C}│${R}"
-echo -e "${C}│${R}  🐾 ${G}Clawd Code${R}                          ${C}│${R}"
+echo -e "${C}│${R}  ${G}Claude Code: Easy Mode${R}                 ${C}│${R}"
 echo -e "${C}│${R}  The friendliest way to use Claude Code ${C}│${R}"
 echo -e "${C}│${R}                                        ${C}│${R}"
 echo -e "${C}╰────────────────────────────────────────╯${R}"
@@ -199,18 +199,18 @@ echo -e "  ${G}✓${R} Welcome skill installed — type ${C}/welcome${R} in Clau
 # ─── Step 5: Install starter CLAUDE.md ───────────────────────
 echo -e "  ${D}Setting up beginner-friendly instructions...${R}"
 
-if [[ -f "$GLOBAL_CLAUDE_MD" ]] && grep -q "Installed by Clawd Code" "$GLOBAL_CLAUDE_MD" 2>/dev/null; then
+if [[ -f "$GLOBAL_CLAUDE_MD" ]] && grep -q "Installed by Easy Mode" "$GLOBAL_CLAUDE_MD" 2>/dev/null; then
   echo -e "  ${G}✓${R} Beginner instructions already installed"
 elif [[ -f "$GLOBAL_CLAUDE_MD" ]]; then
   # Back up existing CLAUDE.md
   cp "$GLOBAL_CLAUDE_MD" "$CLAUDE_MD_BACKUP"
   # Append our instructions
   echo "" >> "$GLOBAL_CLAUDE_MD"
-  echo "<!-- Installed by Clawd Code -->" >> "$GLOBAL_CLAUDE_MD"
+  echo "<!-- Installed by Easy Mode -->" >> "$GLOBAL_CLAUDE_MD"
   curl -fsSL "$REPO_URL/claude-md/CLAUDE.md" >> "$GLOBAL_CLAUDE_MD"
   echo -e "  ${G}✓${R} Added beginner instructions to your existing CLAUDE.md"
 else
-  echo "<!-- Installed by Clawd Code -->" > "$GLOBAL_CLAUDE_MD"
+  echo "<!-- Installed by Easy Mode -->" > "$GLOBAL_CLAUDE_MD"
   curl -fsSL "$REPO_URL/claude-md/CLAUDE.md" >> "$GLOBAL_CLAUDE_MD"
   echo -e "  ${G}✓${R} CLAUDE.md created with beginner-friendly instructions"
 fi
@@ -279,5 +279,5 @@ echo -e "  To get started, type ${C}claude${R} and press Enter."
 echo -e "  Claude will introduce itself and suggest things to try."
 echo ""
 echo -e "  ${D}To undo everything later, see the README at${R}"
-echo -e "  ${D}github.com/maxtattonbrown/clawd-code${R}"
+echo -e "  ${D}github.com/maxtattonbrown/claude-code-easy-mode${R}"
 echo ""
