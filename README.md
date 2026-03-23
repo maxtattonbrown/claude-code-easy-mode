@@ -2,6 +2,8 @@
 
 The friendliest way to use [Claude Code](https://docs.anthropic.com/en/docs/claude-code).
 
+![Clawd Code in action — warm parchment theme with helpful status bar](screenshot.png)
+
 ## Before you start
 
 You'll need a Claude account and Claude Code installed. If you haven't done that yet:
