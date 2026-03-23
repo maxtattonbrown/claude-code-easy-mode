@@ -138,7 +138,6 @@ fi
 # actually running in, not just what's installed on the machine.
 terminal="unknown"
 terminal_name="your terminal"
-auto_launched=false
 
 case "$TERM_PROGRAM" in
   Ghostty)       terminal="ghostty";      terminal_name="Ghostty" ;;
@@ -186,15 +185,18 @@ case "$terminal" in
     ;;
   terminal-app)
     curl -fsSL "$REPO_URL/themes/Friendly%20Terminal.terminal" > "/tmp/Friendly Terminal.terminal"
+    # open imports the profile into Terminal.app, but also creates a
+    # second window. We close that immediately and apply the theme to
+    # the original window so the user stays in one place.
     open "/tmp/Friendly Terminal.terminal" 2>/dev/null || true
     sleep 2
-    # Apply theme and set as default via AppleScript.
-    # Using defaults write races with Terminal.app's own pref saves,
-    # so we talk to the app directly instead.
-    # Also launch Claude Code in the new themed window so the user
-    # lands straight into the welcome experience.
     if osascript -e '
       tell application "Terminal"
+        -- Close the extra window that open created
+        if (count of windows) > 1 then
+          close front window
+        end if
+        -- Apply theme to the original (now front) window
         set targetProfile to settings set "Friendly Terminal"
         set current settings of front window to targetProfile
         set default settings to targetProfile
@@ -202,7 +204,6 @@ case "$terminal" in
       end tell
     ' 2>/dev/null; then
       echo -e "  ${G}✓${R} Theme applied"
-      auto_launched=true
     else
       echo -e "  ${Y}!${R} Theme imported but couldn't auto-apply."
       echo -e "    Open Terminal → Settings → Profiles → Friendly Terminal → click 'Default'"
@@ -336,18 +337,6 @@ echo ""
 echo -e "  ${D}To undo everything later, see the README at${R}"
 echo -e "  ${D}github.com/maxtattonbrown/claude-code-easy-mode${R}"
 echo ""
-
-# Launch Claude Code in the themed window if we have one
-if [[ "$auto_launched" == true ]] && command -v claude &>/dev/null; then
-  osascript -e '
-    tell application "Terminal"
-      do script "claude" in front window
-    end tell
-  ' 2>/dev/null || true
-  echo -e "  ${D}Claude Code is starting in your new window...${R}"
-  echo -e "  ${D}Type ${C}/welcome${D} there for a friendly introduction.${R}"
-else
-  echo -e "  Type ${C}claude${R} and press Enter to get started."
-  echo -e "  Then type ${C}/welcome${R} for a friendly introduction."
-fi
+echo -e "  ${G}→${R} Type ${C}claude${R} right here and press Enter."
+echo -e "    Then say ${C}hello${R} for a friendly introduction."
 echo ""
