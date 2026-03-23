@@ -134,27 +134,33 @@ else
 fi
 
 # ─── Step 1: Detect terminal ────────────────────────────────
+# Check $TERM_PROGRAM first — it identifies the terminal you're
+# actually running in, not just what's installed on the machine.
 terminal="unknown"
 terminal_name="your terminal"
 
-if [[ -d "$HOME/.config/ghostty" ]]; then
-  terminal="ghostty"
-  terminal_name="Ghostty"
-elif pgrep -xq "iTerm2" 2>/dev/null; then
-  terminal="iterm2"
-  terminal_name="iTerm2"
-elif pgrep -xq "Warp" 2>/dev/null; then
-  terminal="warp"
-  terminal_name="Warp"
-elif [[ -d "$HOME/.config/kitty" ]]; then
-  terminal="kitty"
-  terminal_name="Kitty"
-elif [[ -d "$HOME/.config/alacritty" ]]; then
-  terminal="alacritty"
-  terminal_name="Alacritty"
-elif [[ "$(uname)" == "Darwin" ]]; then
-  terminal="terminal-app"
-  terminal_name="Mac Terminal"
+case "$TERM_PROGRAM" in
+  Ghostty)       terminal="ghostty";      terminal_name="Ghostty" ;;
+  iTerm.app)     terminal="iterm2";       terminal_name="iTerm2" ;;
+  WarpTerminal)  terminal="warp";         terminal_name="Warp" ;;
+  Apple_Terminal) terminal="terminal-app"; terminal_name="Mac Terminal" ;;
+esac
+
+# Fallback: check config dirs / running processes if TERM_PROGRAM isn't set
+if [[ "$terminal" == "unknown" ]]; then
+  if [[ -d "$HOME/.config/ghostty" ]]; then
+    terminal="ghostty";  terminal_name="Ghostty"
+  elif pgrep -xq "iTerm2" 2>/dev/null; then
+    terminal="iterm2";   terminal_name="iTerm2"
+  elif pgrep -xq "Warp" 2>/dev/null; then
+    terminal="warp";     terminal_name="Warp"
+  elif [[ -d "$HOME/.config/kitty" ]]; then
+    terminal="kitty";    terminal_name="Kitty"
+  elif [[ -d "$HOME/.config/alacritty" ]]; then
+    terminal="alacritty"; terminal_name="Alacritty"
+  elif [[ "$(uname)" == "Darwin" ]]; then
+    terminal="terminal-app"; terminal_name="Mac Terminal"
+  fi
 fi
 
 echo -e "  ${D}Detected:${R} $terminal_name"
