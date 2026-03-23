@@ -10,11 +10,12 @@ You'll need a Claude account and Claude Code installed. If you haven't done that
 
 1. [Sign up for Claude](https://claude.ai/referral/hWvMMltr7Q) if you don't have an account
 2. Open your terminal (on Mac, search for "Terminal" in Spotlight)
-3. Paste this and press Enter:
+3. Copy this whole line, paste it into the terminal, and press Enter:
    ```bash
    curl -fsSL https://claude.ai/install.sh | bash
    ```
-4. Run `claude` once to log in and set up your account
+   It looks cryptic but it's just downloading and running the official installer. Wait for it to finish.
+4. In the same window, type `claude` and press Enter to log in
 
 That's the hard bit done. Now make it friendly:
 
@@ -35,9 +36,9 @@ It won't change anything you can't undo. One command, done in seconds.
 **2. Helpful status bar** — a traffic light at the bottom that tells you what's going on:
 
 ```
-🟢 Try: "make me a website about dogs" · my-project
-🟡 Context filling up — type /compact · my-project
-🔴 Running low on context — type /compact now · my-project
+🟢 Try: "make me a website about dogs" · my-folder
+🟡 Context filling up — type /compact · my-folder
+🔴 Running low on context — type /compact now · my-folder
 ```
 
 When everything's fine, it shows tips and suggestions. When your conversation is getting long, it tells you exactly what to do.
@@ -62,16 +63,22 @@ You might also see **⚡ Fast mode** — this means Claude is running on a quick
 
 ## Uninstall
 
+To remove everything and restore your original settings, paste this:
+
+<details>
+<summary>Show uninstall command</summary>
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maxtattonbrown/clawd-code/main/install.sh | bash -s -- --uninstall
 ```
 
-Restores your original settings. Nothing permanent.
+</details>
+
+Nothing permanent — your original settings are backed up and restored.
 
 ## Requirements
 
-- macOS or Linux
-- `jq` or `python3` for the status bar (most Macs already have python3)
+- A Mac or Linux computer (everything else you need is already installed)
 
 ## Credits
 

@@ -133,13 +133,13 @@ case "$terminal" in
     mkdir -p "$HOME/.config/ghostty/themes"
     curl -fsSL "$REPO_URL/themes/friendly-terminal-ghostty" > "$HOME/.config/ghostty/themes/friendly-terminal"
     echo -e "  ${G}✓${R} Theme installed"
-    echo -e "  ${Y}→${R} Add ${C}theme = friendly-terminal${R} to ~/.config/ghostty/config"
+    echo -e "  ${Y}→${R} Ask Claude: ${C}\"turn on the friendly-terminal theme\"${R}"
     ;;
   iterm2)
     curl -fsSL "$REPO_URL/themes/Friendly%20Terminal.itermcolors" > "/tmp/Friendly Terminal.itermcolors"
     open "/tmp/Friendly Terminal.itermcolors" 2>/dev/null || true
     echo -e "  ${G}✓${R} Theme imported into iTerm2"
-    echo -e "  ${Y}→${R} Select it in Settings → Profiles → Colors → Color Presets"
+    echo -e "  ${Y}→${R} In iTerm2: Settings → Profiles → Colors → Color Presets → Friendly Terminal"
     ;;
   terminal-app)
     curl -fsSL "$REPO_URL/themes/Friendly%20Terminal.terminal" > "/tmp/Friendly Terminal.terminal"
@@ -154,19 +154,19 @@ case "$terminal" in
     mkdir -p "$HOME/.warp/themes"
     curl -fsSL "$REPO_URL/themes/friendly-terminal-warp.yaml" > "$HOME/.warp/themes/friendly-terminal.yaml"
     echo -e "  ${G}✓${R} Theme installed"
-    echo -e "  ${Y}→${R} Select it in Settings → Appearance → Themes"
+    echo -e "  ${Y}→${R} In Warp: Settings → Appearance → Themes → friendly-terminal"
     ;;
   kitty)
     mkdir -p "$HOME/.config/kitty/themes"
     curl -fsSL "$REPO_URL/themes/friendly-terminal-kitty.conf" > "$HOME/.config/kitty/themes/friendly-terminal.conf"
     echo -e "  ${G}✓${R} Theme installed"
-    echo -e "  ${Y}→${R} Add ${C}include themes/friendly-terminal.conf${R} to ~/.config/kitty/kitty.conf"
+    echo -e "  ${Y}→${R} Ask Claude: ${C}\"turn on the friendly-terminal theme\"${R}"
     ;;
   alacritty)
     curl -fsSL "$REPO_URL/themes/friendly-terminal-alacritty.toml" > "$HOME/.config/alacritty/friendly-terminal.toml" 2>/dev/null || \
     curl -fsSL "$REPO_URL/themes/friendly-terminal-alacritty.toml" > "/tmp/friendly-terminal-alacritty.toml"
     echo -e "  ${G}✓${R} Theme downloaded"
-    echo -e "  ${Y}→${R} Import it in your alacritty.toml"
+    echo -e "  ${Y}→${R} Ask Claude: ${C}\"turn on the friendly-terminal theme\"${R}"
     ;;
   *)
     echo -e "  ${Y}!${R} Couldn't detect your terminal — theme files are at github.com/maxtattonbrown/friendly-terminal"
