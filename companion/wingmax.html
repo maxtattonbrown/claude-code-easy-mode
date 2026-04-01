@@ -290,7 +290,40 @@
     bubbleText.className = 'bubble-text' + (muted ? ' muted' : '');
   }
 
-  // ── During-work commentary (judgement-based) ──
+  // ── Turn-level signal aggregation ──
+  function extractTurnSignals(evts) {
+    var langs = {}, fileCats = {}, bashCats = {};
+    var hasTestFail = false, hasBuildFail = false, hasError = false;
+    var testSummary = '', errorHint = '';
+    var totalLines = 0;
+
+    evts.forEach(function(e) {
+      var s = e.signals || {};
+      if (s.lang) langs[s.lang] = true;
+      if (s.file_category) fileCats[s.file_category] = true;
+      if (s.category) bashCats[s.category] = true;
+      if (s.exit_ok === false) hasError = true;
+      if (s.category === 'test' && s.exit_ok === false) hasTestFail = true;
+      if (s.category === 'build' && s.exit_ok === false) hasBuildFail = true;
+      if (s.test_summary && !testSummary) testSummary = s.test_summary;
+      if (s.error_hint && !errorHint) errorHint = s.error_hint;
+      if (s.line_count) totalLines += s.line_count;
+    });
+
+    return {
+      languages: Object.keys(langs),
+      fileCategories: Object.keys(fileCats),
+      bashCategories: Object.keys(bashCats),
+      hasTestFailure: hasTestFail,
+      hasBuildFailure: hasBuildFail,
+      hasError: hasError,
+      testSummary: testSummary,
+      errorHint: errorHint,
+      totalLines: totalLines
+    };
+  }
+
+  // ── During-work commentary (signal-aware) ──
   function workComment(evts) {
     var reads = 0, writes = 0, edits = 0, cmds = 0, searches = 0, agents = 0, webs = 0;
     evts.forEach(function(e) {
@@ -304,60 +337,53 @@
     });
 
     var total = evts.length;
+    var sig = extractTurnSignals(evts);
 
-    // Only comment when something noteworthy is happening
     if (mode === 'beginner') {
-      if (reads >= 6 && writes === 0 && edits === 0)
-        return pick([
-          'Claude\u2019s reading through your files \u2014 getting the full picture before making changes.',
-          'Lots of reading \u2014 Claude likes to understand what\u2019s there before it acts.',
-        ]);
+      // Signal-driven commentary first
+      if (sig.hasTestFailure)
+        return 'Claude ran the tests and some didn\u2019t pass. It\u2019ll probably try to fix that now.';
+      if (sig.hasBuildFailure)
+        return 'The build didn\u2019t work first time \u2014 Claude\u2019s figuring out why.';
+      if (sig.hasError)
+        return 'Something didn\u2019t go as expected \u2014 Claude\u2019s working through it.';
+      if (sig.languages.length > 0 && reads >= 4)
+        return 'Claude\u2019s reading through your ' + sig.languages[0] + ' files \u2014 getting the full picture.';
       if (agents > 0)
         return pick([
           'Claude just asked a helper for extra research. Teamwork!',
           'Claude\u2019s getting help from a specialist \u2014 this might take a moment.',
         ]);
-      if (cmds >= 3)
-        return pick([
-          'Claude\u2019s running a few commands \u2014 setting things up for you.',
-          'A few commands running \u2014 Claude\u2019s getting your environment ready.',
-        ]);
-      if (webs > 0)
-        return pick([
-          'Claude\u2019s checking something online for you.',
-          'Looking something up on the web \u2014 Claude wants current info.',
-        ]);
-      if (total >= 10)
-        return pick([
-          'Claude\u2019s been busy \u2014 this is a bigger task. Hang tight!',
-          'Quite a bit going on \u2014 Claude\u2019s working through it step by step.',
-        ]);
-    } else {
-      // Intermediate mode: more specific, names actions
       if (reads >= 6 && writes === 0 && edits === 0)
-        return pick([
-          'Heavy read pass \u2014 Claude\u2019s mapping the codebase before making changes.',
-          reads + ' files read, no writes yet. Reconnaissance phase.',
-        ]);
-      if (agents > 0)
-        return pick([
-          'Subagent spawned \u2014 Claude\u2019s delegating part of this task.',
-          'Claude kicked off a subagent for deeper research.',
-        ]);
-      if (cmds >= 3)
-        return pick([
-          'Multiple shell commands \u2014 likely installing deps or running builds.',
-          cmds + ' commands so far. Claude\u2019s doing setup work.',
-        ]);
-      if (searches >= 4)
-        return pick([
-          'Broad search \u2014 Claude\u2019s hunting for the right files.',
-          searches + ' searches. Claude\u2019s finding its way around.',
-        ]);
+        return 'Lots of reading \u2014 Claude likes to understand what\u2019s there before it acts.';
       if (webs > 0)
-        return 'Web fetch \u2014 checking docs or looking something up.';
+        return 'Claude\u2019s checking something online for you.';
       if (total >= 10)
-        return 'Big task \u2014 ' + total + ' tool calls so far. This one\u2019s complex.';
+        return 'Claude\u2019s been busy \u2014 this is a bigger task. Hang tight!';
+    } else {
+      // Intermediate: signal-driven, specific
+      if (sig.hasTestFailure && sig.testSummary)
+        return 'Tests failing: ' + sig.testSummary + '. Claude will iterate.';
+      if (sig.hasTestFailure)
+        return 'Test failure detected. Claude\u2019s likely about to fix it.';
+      if (sig.hasBuildFailure && sig.errorHint)
+        return 'Build broke: ' + sig.errorHint.substring(0, 50);
+      if (sig.hasBuildFailure)
+        return 'Build failed. Claude\u2019s debugging.';
+      if (sig.hasError && sig.errorHint)
+        return 'Error: ' + sig.errorHint.substring(0, 60);
+      if (sig.languages.length >= 2)
+        return 'Working across ' + sig.languages.join(' and ') + '.';
+      if (sig.totalLines > 500 && reads >= 3)
+        return 'Heavy context loading \u2014 ' + sig.totalLines + ' lines read. Claude\u2019s building a mental model.';
+      if (agents > 0)
+        return 'Subagent spawned \u2014 Claude\u2019s delegating part of this task.';
+      if (reads >= 6 && writes === 0 && edits === 0)
+        return reads + ' files read, no writes yet. Reconnaissance phase.';
+      if (searches >= 4)
+        return searches + ' searches. Claude\u2019s finding its way around.';
+      if (total >= 10)
+        return 'Big task \u2014 ' + total + ' tool calls so far.';
     }
 
     return ''; // Nothing noteworthy yet
@@ -381,18 +407,36 @@
     });
     var created = unique(createdRaw);
     var edited = unique(editedRaw);
-
+    var sig = extractTurnSignals(evts);
     var hasHtml = created.some(function(f) { return f.endsWith('.html'); });
+    var readCount = evts.filter(function(e) { return e.type === 'file_read'; }).length;
+    var totalEvts = evts.length;
+    var langStr = sig.languages.length > 0 ? sig.languages.join(' and ') : '';
 
     if (mode === 'beginner') {
+      // Signal-driven commentary first
+      if (sig.hasTestFailure && sig.testSummary)
+        return 'Claude ran the tests: ' + sig.testSummary + '. It\u2019ll keep working on this.';
+      if (sig.hasTestFailure)
+        return 'Some tests didn\u2019t pass. Claude will probably try to fix them.';
+      if (sig.bashCategories.indexOf('test') >= 0 && !sig.hasTestFailure)
+        return pick([
+          'Claude ran the tests and everything passed \u2014 that\u2019s the green light!',
+          'Tests all passing. That means the code is doing what it should.',
+        ]);
+      if (sig.hasBuildFailure)
+        return 'The build didn\u2019t work first time \u2014 Claude\u2019s figuring out why.';
+      // Then fall through to existing pattern-based commentary
       if (hasHtml)
         return pick([
           'Oh nice \u2014 Claude just built you a website! Have a look below.',
           'There you go \u2014 a whole website! Check it out below.',
         ]);
+      if (created.length > 0 && langStr)
+        return 'Claude just wrote some ' + langStr + ' for you. It\u2019s saved on your computer.';
       if (created.length > 0 && (hasRead || hasSearch))
         return pick([
-          'Claude read your files first, then put something new together for you. Smart \u2014 it always checks what\u2019s there before making anything.',
+          'Claude read your files first, then made something new. It always checks what\u2019s there before creating.',
           'Nice \u2014 Claude checked what you had, then created something based on it.',
         ]);
       if (created.length > 0)
@@ -400,24 +444,18 @@
           'There you go \u2014 Claude just made that for you. It\u2019s saved on your computer.',
           'Done! Claude created that for you \u2014 it\u2019s a real file you can open.',
         ]);
-      if (edited.length > 0 && (hasRead || hasSearch))
-        return pick([
-          'Claude checked your files first, then made some changes. It only touched what needed updating.',
-          'Claude had a look, then tweaked things for you. Everything else stayed as it was.',
-        ]);
+      if (edited.length > 0 && langStr)
+        return 'Claude updated your ' + langStr + ' files. Only the bits that needed changing.';
       if (edited.length > 0)
         return pick([
           'Claude just updated your files. Only the bits that needed changing.',
           'Done \u2014 Claude made those changes for you.',
         ]);
       if (hasWeb)
-        return pick([
-          'Claude went online and looked some things up for you.',
-          'Claude checked the web to get you current information.',
-        ]);
+        return 'Claude went online and looked some things up for you.';
       if (hasCmd)
         return pick([
-          'Claude just ran a command on your computer \u2014 that\u2019s how it sets things up and gets things done.',
+          'Claude just ran a command on your computer \u2014 that\u2019s how it sets things up.',
           'Claude ran a command for you. Don\u2019t worry \u2014 it always asks permission first.',
         ]);
       if (hasRead || hasSearch)
@@ -427,70 +465,58 @@
         ]);
       return 'All done!';
     } else {
-      // Intermediate mode: sound like a mate, add insight, suggest workflow.
-      // Count events for context
-      var readCount = evts.filter(function(e) { return e.type === 'file_read'; }).length;
-      var cmdCount = evts.filter(function(e) { return e.type === 'command'; }).length;
-      var totalEvts = evts.length;
+      // Intermediate mode: signal-driven, then pattern-based, then tips
+      // Test results are the highest-signal commentary
+      if (sig.hasTestFailure && sig.testSummary)
+        return 'Tests failing: ' + sig.testSummary + '. Check the output.';
+      if (sig.hasTestFailure)
+        return 'Test failure. Check the terminal for details.';
+      if (sig.bashCategories.indexOf('test') >= 0 && !sig.hasTestFailure)
+        return 'Tests green. Good time for /commit.';
+      if (sig.hasBuildFailure && sig.errorHint)
+        return 'Build broke \u2014 ' + sig.errorHint.substring(0, 50);
+      if (sig.hasBuildFailure)
+        return 'Build failed. Check the terminal.';
+      if (sig.hasError && sig.errorHint)
+        return 'Hit an error: ' + sig.errorHint.substring(0, 50);
 
+      // File changes with language context
       if (hasHtml)
-        return pick([
-          'Nice \u2014 you\u2019ve got a live page. Check the preview below.',
-          'Website\u2019s up. Have a look below \u2014 hit refresh if you change it.',
-        ]);
-      if (created.length > 0 && edited.length > 0)
-        return pick([
-          'New files plus edits \u2014 that was a proper chunk of work. Good time to /commit.',
-          'Created and edited in one go. Claude read first, then changed \u2014 that\u2019s its standard play.',
-        ]);
+        return 'Built ' + created.filter(function(f) { return f.endsWith('.html'); }).join(', ') + ' \u2014 preview below.';
+      if (created.length > 0 && edited.length > 0) {
+        var msg = 'Created and edited files';
+        if (langStr) msg += ' (' + langStr + ')';
+        return msg + '. Good time for /commit.';
+      }
       if (created.length > 0 && readCount >= 3)
-        return pick([
-          'Claude checked what was there, then built on top of it. Smart \u2014 less chance of clashing with existing code.',
-          'Read a few files first, then created new ones. That read-before-write habit is worth copying.',
-        ]);
+        return 'Read first, then created. That read-before-write pattern reduces mistakes.';
+      if (created.length > 0 && langStr)
+        return 'New ' + langStr + ' file' + (created.length > 1 ? 's' : '') + '. Worth a look before moving on.';
       if (created.length > 0)
-        return pick([
-          'New file' + (created.length > 1 ? 's' : '') + ' on disk. Worth a look \u2014 then tell Claude what to change.',
-          'That\u2019s saved locally. You own it now \u2014 Claude can\u2019t change it without asking.',
-        ]);
-      if (edited.length > 0 && readCount >= 3)
-        return pick([
-          'Read a bunch of files, then made targeted edits. That\u2019s the pattern \u2014 Claude always checks context first.',
-          'Careful approach \u2014 read first, edit second. If you want to see exactly what changed, try: check git diff',
-        ]);
+        return 'New file' + (created.length > 1 ? 's' : '') + ' on disk. Worth a look.';
       if (edited.length > 0 && totalEvts > 8)
-        return pick([
-          'Big edit session. Might be worth a /commit before moving on \u2014 gives you a save point.',
-          'Lot of changes there. Type /diff if you want to review before committing.',
-        ]);
+        return 'Big edit session' + (langStr ? ' (' + langStr + ')' : '') + '. /commit before moving on.';
+      if (edited.length > 0 && langStr)
+        return 'Edited ' + langStr + '. Check the diff if you\u2019re curious.';
       if (edited.length > 0)
-        return pick([
-          'Quick edit done. If it\u2019s not right, just say \u2014 Claude can undo or try differently.',
-          'Changes made. Claude only touched what it needed to. Check the diff if you\u2019re curious.',
-        ]);
+        return 'Quick edit done. If it\u2019s not right, just say.';
+
+      // Non-file-change turns
+      if (sig.languages.length >= 2)
+        return 'Cross-stack work \u2014 touched ' + langStr + ' this turn.';
       if (hasWeb)
-        return pick([
-          'Claude went and looked something up. Useful when docs might be out of date.',
-          'Web lookup done. Claude does this when it wants current info rather than guessing.',
-        ]);
+        return 'Web lookup done. Claude does this when it wants current info rather than guessing.';
       if (readCount >= 6)
-        return pick([
-          'Big exploration pass \u2014 Claude\u2019s mapping out the codebase. Normal for a new project or big task.',
-          'Claude read a lot of files. It does this to build context \u2014 better answers come from understanding the full picture.',
-        ]);
-      if (cmdCount >= 2)
-        return pick([
-          'Ran some commands. If anything looks off in the terminal, you can always tell Claude to undo.',
-          'Setup work done. Claude uses shell commands for installs, builds, and checks.',
-        ]);
-      // For quiet turns, show a useful CC tip instead of nothing
+        return 'Big read pass \u2014 ' + sig.totalLines + ' lines. Claude\u2019s building context.';
+
+      // CC tips for quiet turns
       return pick([
-        'Tip: you can type /compact when the conversation gets long. Frees up context for better answers.',
-        'Tip: Claude remembers what you\u2019ve done this session. Reference earlier work by name.',
-        'Tip: if Claude\u2019s going the wrong direction, just interrupt. Say what you actually want.',
-        'Tip: /commit saves your work to git. Good habit after each chunk of progress.',
-        'Tip: you can ask Claude to explain any file \u2014 just say "explain [filename]".',
-        'Tip: Claude works best with specific instructions. "Make the button blue" beats "improve the UI".',
+        'Tip: /compact frees up context when the conversation gets long.',
+        'Tip: Claude remembers this session. Reference earlier work by name.',
+        'Tip: if Claude\u2019s going the wrong direction, just interrupt.',
+        'Tip: /commit saves your work to git. Good habit after progress.',
+        'Tip: ask Claude to explain any file \u2014 "explain [filename]".',
+        'Tip: specific instructions work best. "Make the button blue" beats "improve the UI".',
       ]);
     }
   }
@@ -503,12 +529,15 @@
     return Object.keys(names).join('  ');
   }
 
-  // ── Suggestions per mode ──
+  // ── Suggestions per mode (signal-aware) ──
   function nextSuggestion(evts) {
     var hasCreated = evts.some(function(e) { return e.type === 'file_create'; });
     var hasEdited = evts.some(function(e) { return e.type === 'file_edit'; });
+    var sig = extractTurnSignals(evts);
 
     if (mode === 'beginner') {
+      if (sig.hasTestFailure) return pick(['ask Claude to fix the tests', 'explain what went wrong']);
+      if (sig.hasBuildFailure) return pick(['ask Claude what happened', 'try a different approach']);
       if (hasCreated) return pick([
         'adjust the tone', 'check it for mistakes', 'explain what you just made',
         'try something completely different', 'make it shorter'
@@ -523,19 +552,20 @@
         'organise my files'
       ]);
     } else {
-      // Intermediate: reference CC features and developer workflows
+      if (sig.hasTestFailure) return pick(['check the test output', 'run tests again', 'ask Claude to fix it']);
+      if (sig.hasBuildFailure) return pick(['look at the error', 'try a different approach']);
+      if (sig.bashCategories.indexOf('test') >= 0 && !sig.hasTestFailure) return '/commit';
       if (hasCreated) return pick([
-        'review the diff', 'type /commit to save this',
-        'run the tests', 'refactor for readability',
-        'add error handling'
+        'review the diff', '/commit', 'run the tests',
+        'refactor for readability'
       ]);
       if (hasEdited) return pick([
-        'check git diff', 'type /commit', 'run tests',
-        'explain the change', 'undo with git restore'
+        'check git diff', '/commit', 'run tests',
+        'explain the change'
       ]);
+      if (sig.fileCategories.indexOf('config') >= 0) return 'check the config is right';
       return pick([
-        'type /compact \u2014 context might be getting full',
-        'try /init to set up project instructions',
+        '/compact \u2014 context might be getting full',
         'ask Claude to explain this codebase',
         'run the test suite', 'check git status'
       ]);

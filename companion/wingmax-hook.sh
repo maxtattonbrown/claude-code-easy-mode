@@ -1,6 +1,6 @@
 #!/bin/bash
 # ABOUTME: PostToolUse hook that writes Claude Code activity to a JSON status file.
-# ABOUTME: The Browser WingMax companion page reads this file to show what Claude is doing.
+# ABOUTME: Extracts signals from tool_response for rich WingMax commentary.
 
 STATUS_FILE="$HOME/.claude/companion/status.json"
 TEMP_FILE="$HOME/.claude/companion/status.tmp.json"
@@ -9,7 +9,58 @@ MAX_EVENTS=50
 # Read hook JSON from stdin
 INPUT=$(cat)
 
-# Extract fields — try jq first, fall back to python3
+# ── Language detection from file extension ──
+detect_lang() {
+  case "${1##*.}" in
+    py)             echo "python" ;;
+    ts|tsx)         echo "typescript" ;;
+    js|jsx|mjs)     echo "javascript" ;;
+    html|htm)       echo "html" ;;
+    css|scss|less)  echo "css" ;;
+    md|mdx)         echo "markdown" ;;
+    json)           echo "json" ;;
+    yaml|yml)       echo "yaml" ;;
+    toml)           echo "toml" ;;
+    sh|bash|zsh)    echo "shell" ;;
+    rs)             echo "rust" ;;
+    go)             echo "go" ;;
+    rb)             echo "ruby" ;;
+    swift)          echo "swift" ;;
+    java)           echo "java" ;;
+    c|h)            echo "c" ;;
+    cpp|hpp|cc)     echo "cpp" ;;
+    sql)            echo "sql" ;;
+    *)              echo "" ;;
+  esac
+}
+
+# ── File category from filename patterns ──
+detect_file_category() {
+  local name="$1"
+  case "$name" in
+    *test*|*spec*|*_test.*|*.test.*)  echo "test" ;;
+    *.config.*|*rc|*rc.js|*rc.ts|*.toml|*.yaml|*.yml|Makefile|Dockerfile|*.lock|package.json|tsconfig*|wrangler.*)  echo "config" ;;
+    *.md|*.txt|*.rst|README*|LICENSE*|CHANGELOG*|CLAUDE.md)  echo "doc" ;;
+    *.css|*.scss|*.less)  echo "style" ;;
+    *)  echo "source" ;;
+  esac
+}
+
+# ── Bash command category from command string ──
+detect_bash_category() {
+  local cmd="$1"
+  case "$cmd" in
+    *test*|*jest*|*pytest*|*vitest*|*"cargo test"*|*"go test"*|*"npm test"*|*"npx playwright"*)  echo "test" ;;
+    *build*|*webpack*|*esbuild*|*tsc*|*"cargo build"*|*make*)  echo "build" ;;
+    *install*|*"npm i"*|*"pip install"*|*"pip3 install"*|*"brew install"*|*apt*)  echo "install" ;;
+    *"git "*|*"gh "*)  echo "git" ;;
+    *serve*|*start*|*dev*|*localhost*)  echo "server" ;;
+    *lint*|*eslint*|*prettier*|*ruff*)  echo "lint" ;;
+    *)  echo "general" ;;
+  esac
+}
+
+# ── Extract fields — try jq first, fall back to python3 ──
 if command -v jq &>/dev/null; then
   TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
   SESSION=$(echo "$INPUT" | jq -r '.session_id // empty')
@@ -39,15 +90,94 @@ if command -v jq &>/dev/null; then
       DETAIL=""
       ;;
   esac
+
+  # ── Extract signals from tool_response ──
+  LANG=$(detect_lang "$DETAIL")
+  FILE_CAT=$(detect_file_category "$DETAIL")
+  HAS_RESPONSE=$(echo "$INPUT" | jq 'has("tool_response")')
+
+  case "$TOOL" in
+    Bash)
+      BASH_CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+      BASH_CAT=$(detect_bash_category "$BASH_CMD")
+      if [ "$HAS_RESPONSE" = "true" ]; then
+        SIGNALS=$(echo "$INPUT" | jq -c --arg cat "$BASH_CAT" '
+          (.tool_response // "" | tostring) as $resp |
+          {
+            exit_ok: ($resp | test("(?i)(error|FAIL|fatal|panic|Traceback|command not found|No such file|Permission denied|ENOENT)") | not),
+            category: $cat,
+            error_hint: (if ($resp | test("(?i)(error|fail|fatal|panic|traceback)"))
+              then ($resp | split("\n") | map(select(test("(?i)(error|fail|panic|traceback)"))) | first // "" | .[:80])
+              else "" end),
+            test_summary: (if ($resp | test("(?i)(passed|failed|Tests:|test result)"))
+              then ($resp | split("\n") | map(select(test("(?i)(\\d+.*(passed|failed)|Tests:|test result)"))) | first // "" | .[:60])
+              else "" end)
+          }' 2>/dev/null)
+      else
+        SIGNALS=$(jq -n --arg cat "$BASH_CAT" '{category: $cat}')
+      fi
+      ;;
+    Read)
+      if [ "$HAS_RESPONSE" = "true" ]; then
+        LINE_COUNT=$(echo "$INPUT" | jq '(.tool_response // "" | tostring) | split("\n") | length' 2>/dev/null)
+        SIGNALS=$(jq -n --arg lang "$LANG" --arg fcat "$FILE_CAT" --argjson lc "${LINE_COUNT:-0}" \
+          '{lang: $lang, file_category: $fcat, line_count: $lc}')
+      else
+        SIGNALS=$(jq -n --arg lang "$LANG" --arg fcat "$FILE_CAT" '{lang: $lang, file_category: $fcat}')
+      fi
+      ;;
+    Edit)
+      if [ "$HAS_RESPONSE" = "true" ]; then
+        EDIT_OK=$(echo "$INPUT" | jq '(.tool_response // "" | tostring) | test("(?i)(error|failed)") | not' 2>/dev/null)
+        SIGNALS=$(jq -n --arg lang "$LANG" --argjson ok "${EDIT_OK:-true}" '{lang: $lang, success: $ok}')
+      else
+        SIGNALS=$(jq -n --arg lang "$LANG" '{lang: $lang}')
+      fi
+      ;;
+    Write)
+      SIGNALS=$(jq -n --arg lang "$LANG" '{lang: $lang}')
+      ;;
+    Grep)
+      if [ "$HAS_RESPONSE" = "true" ]; then
+        SIGNALS=$(echo "$INPUT" | jq -c '
+          (.tool_response // "" | tostring) as $resp |
+          ($resp | split("\n") | map(select(length > 0)) | length) as $count |
+          {match_count: $count, found: ($count > 0)}' 2>/dev/null)
+      else
+        SIGNALS='{"found": false, "match_count": 0}'
+      fi
+      ;;
+    Glob)
+      if [ "$HAS_RESPONSE" = "true" ]; then
+        SIGNALS=$(echo "$INPUT" | jq -c '
+          (.tool_response // "" | tostring) as $resp |
+          ($resp | split("\n") | map(select(length > 0)) | length) as $count |
+          {match_count: $count, found: ($count > 0)}' 2>/dev/null)
+      else
+        SIGNALS='{"found": false, "match_count": 0}'
+      fi
+      ;;
+    *)
+      SIGNALS='{}'
+      ;;
+  esac
+
+  # Fallback if signal extraction failed
+  [ -z "$SIGNALS" ] && SIGNALS='{}'
+
 else
-  # Python3 fallback
+  # ── Python3 fallback — extracts everything in one pass ──
   eval "$(echo "$INPUT" | python3 -c "
-import sys, json
+import sys, json, re, os
+
 d = json.load(sys.stdin)
 tool = d.get('tool_name', '')
 session = d.get('session_id', '')
 cwd = d.get('cwd', '')
 ti = d.get('tool_input', {})
+tr = str(d.get('tool_response', ''))
+
+# Detail extraction
 detail = ''
 if tool in ('Read', 'Write', 'Edit'):
     fp = ti.get('file_path', '')
@@ -60,10 +190,64 @@ elif tool == 'Grep':
     detail = ti.get('pattern', '')
 elif tool == 'Agent':
     detail = ti.get('description', '')
+
+# Language detection
+ext_map = {
+    'py': 'python', 'ts': 'typescript', 'tsx': 'typescript', 'js': 'javascript',
+    'jsx': 'javascript', 'html': 'html', 'htm': 'html', 'css': 'css', 'scss': 'css',
+    'md': 'markdown', 'mdx': 'markdown', 'json': 'json', 'yaml': 'yaml', 'yml': 'yaml',
+    'toml': 'toml', 'sh': 'shell', 'bash': 'shell', 'rs': 'rust', 'go': 'go',
+    'rb': 'ruby', 'swift': 'swift', 'java': 'java', 'c': 'c', 'h': 'c',
+    'cpp': 'cpp', 'hpp': 'cpp', 'sql': 'sql'
+}
+ext = detail.rsplit('.', 1)[-1] if '.' in detail else ''
+lang = ext_map.get(ext, '')
+
+# File category
+fcat = 'source'
+dl = detail.lower()
+if any(x in dl for x in ('test', 'spec')): fcat = 'test'
+elif any(dl.endswith(x) for x in ('.config.js','.config.ts','rc','rc.js','.toml','.yaml','.yml','.lock')) or dl in ('package.json','makefile','dockerfile'): fcat = 'config'
+elif any(dl.endswith(x) for x in ('.md','.txt','.rst')) or dl.startswith(('readme','license','changelog','claude')): fcat = 'doc'
+elif any(dl.endswith(x) for x in ('.css','.scss','.less')): fcat = 'style'
+
+# Signal extraction
+signals = {}
+if tool == 'Bash':
+    cmd = ti.get('command', '')
+    cl = cmd.lower()
+    if any(x in cl for x in ('test','jest','pytest','vitest','cargo test','go test')): signals['category'] = 'test'
+    elif any(x in cl for x in ('build','webpack','esbuild','tsc','cargo build','make')): signals['category'] = 'build'
+    elif any(x in cl for x in ('install','npm i','pip install','brew install')): signals['category'] = 'install'
+    elif 'git ' in cl or 'gh ' in cl: signals['category'] = 'git'
+    else: signals['category'] = 'general'
+    error_pats = re.compile(r'(?i)(error|FAIL|fatal|panic|Traceback|command not found|No such file|Permission denied|ENOENT)')
+    signals['exit_ok'] = not bool(error_pats.search(tr))
+    if not signals['exit_ok']:
+        for line in tr.split(chr(10)):
+            if error_pats.search(line):
+                signals['error_hint'] = line.strip()[:80]
+                break
+    test_pat = re.compile(r'(?i)(\d+.*(?:passed|failed)|Tests:|test result)')
+    for line in tr.split(chr(10)):
+        if test_pat.search(line):
+            signals['test_summary'] = line.strip()[:60]
+            break
+elif tool == 'Read':
+    signals = {'lang': lang, 'file_category': fcat, 'line_count': tr.count(chr(10))}
+elif tool == 'Edit':
+    signals = {'lang': lang, 'success': 'error' not in tr.lower() and 'failed' not in tr.lower()}
+elif tool == 'Write':
+    signals = {'lang': lang}
+elif tool in ('Grep', 'Glob'):
+    lines = [l for l in tr.split(chr(10)) if l.strip()]
+    signals = {'match_count': len(lines), 'found': len(lines) > 0}
+
 print(f'TOOL={json.dumps(tool)}')
 print(f'SESSION={json.dumps(session)}')
 print(f'CWD={json.dumps(cwd)}')
 print(f'DETAIL={json.dumps(detail)}')
+print(f'SIGNALS={json.dumps(json.dumps(signals))}')
 " 2>/dev/null)"
 fi
 
@@ -108,7 +292,7 @@ if [ "$TOOL" = "Write" ]; then
   esac
 fi
 
-# Build the new event and merge into status file
+# Build the new event with signals and merge into status file
 if command -v jq &>/dev/null; then
   NEW_EVENT=$(jq -n \
     --arg ts "$TIMESTAMP" \
@@ -116,7 +300,8 @@ if command -v jq &>/dev/null; then
     --arg label "$LABEL" \
     --arg detail "$DETAIL" \
     --arg type "$TYPE" \
-    '{ts: $ts, tool: $tool, label: $label, detail: $detail, type: $type}')
+    --argjson signals "$SIGNALS" \
+    '{ts: $ts, tool: $tool, label: $label, detail: $detail, type: $type, signals: $signals}')
 
   # Create or update the status file
   if [ -f "$STATUS_FILE" ] && [ -s "$STATUS_FILE" ]; then
@@ -158,7 +343,8 @@ else
   python3 -c "
 import json, os
 status_file = '$STATUS_FILE'
-event = {'ts': '$TIMESTAMP', 'tool': '$TOOL', 'label': '$LABEL', 'detail': '$DETAIL', 'type': '$TYPE'}
+signals = json.loads('$SIGNALS') if '$SIGNALS' else {}
+event = {'ts': '$TIMESTAMP', 'tool': '$TOOL', 'label': '$LABEL', 'detail': '$DETAIL', 'type': '$TYPE', 'signals': signals}
 try:
     with open(status_file) as f:
         data = json.load(f)
