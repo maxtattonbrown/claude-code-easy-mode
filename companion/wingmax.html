@@ -511,11 +511,20 @@
 
   function showPreview(fl) {
     if (hasPreview && fl.length === lastFC) return;
-    var f = 'index.html';
-    for (var i = 0; i < fl.length; i++) { if (fl[i].endsWith('.html')) { f = fl[i]; break; } }
+    // Only preview genuine project HTML files, not companion/config files
+    var projectHtml = fl.filter(function(f) {
+      return f.endsWith('.html') && f !== 'wingmax.html' && f !== 'sample-preview.html';
+    });
+    if (projectHtml.length === 0) return;
+    var f = projectHtml[0];
     pvVer++;
-    pvFrame.src = '/preview/' + encodeURIComponent(f) + '?v=' + pvVer;
-    if (!hasPreview) { preview.classList.add('visible'); hasPreview = true; }
+    var url = '/preview/' + encodeURIComponent(f) + '?v=' + pvVer;
+    // Check the file exists before showing preview
+    fetch(url, { method: 'HEAD' }).then(function(r) {
+      if (!r.ok) return;
+      pvFrame.src = url;
+      if (!hasPreview) { preview.classList.add('visible'); hasPreview = true; }
+    }).catch(function() {});
   }
 
   function onDone() {
