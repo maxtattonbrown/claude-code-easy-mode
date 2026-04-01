@@ -66,6 +66,33 @@
     40% { opacity: 1; }
   }
 
+  /* ── Message history ─────────────────── */
+  .history {
+    margin-left: 56px; width: calc(100% - 56px);
+    display: flex; flex-direction: column; gap: 8px;
+    max-height: 240px; overflow-y: auto;
+  }
+
+  .history:empty { display: none; }
+
+  .history-msg {
+    font-size: 13px; line-height: 1.5; color: var(--muted);
+    padding: 8px 14px;
+    background: var(--bg); border-radius: 12px;
+    border: 1px solid var(--border);
+    animation: fadeIn 0.3s ease;
+  }
+
+  .history-msg .history-files {
+    font-family: var(--mono); font-size: 11px; color: var(--tan);
+    margin-top: 2px;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
   /* ── Speech bubble ──────────────────── */
   .bubble {
     background: var(--card); border-radius: 18px 18px 18px 4px;
@@ -150,6 +177,8 @@
     </div>
   </div>
 
+  <div class="history" id="history"></div>
+
   <div class="suggest" id="suggest">
     <div class="suggest-label" id="suggest-label">In your terminal, try typing:</div>
     <div class="suggest-cmd" id="suggest-cmd">hello</div>
@@ -175,9 +204,12 @@
   var mode = 'beginner'; // beginner or intermediate
   var lastWorkComment = '', workCommentShown = false;
 
+  var MAX_HISTORY = 8;
+
   var avatar     = document.getElementById('avatar');
   var bubbleText = document.getElementById('bubble-text');
   var bubbleFiles = document.getElementById('bubble-files');
+  var history    = document.getElementById('history');
   var suggest    = document.getElementById('suggest');
   var sugLabel   = document.getElementById('suggest-label');
   var sugCmd     = document.getElementById('suggest-cmd');
@@ -227,6 +259,28 @@
     }, delay);
   }
   scheduleIdleBlink();
+
+  var lastBubbleText = '';
+  var lastBubbleFiles = '';
+
+  function pushToHistory(text, files) {
+    if (!text || text === 'Claude\u2019s on it\u2026') return;
+    var msg = document.createElement('div');
+    msg.className = 'history-msg';
+    msg.textContent = text;
+    if (files) {
+      var f = document.createElement('div');
+      f.className = 'history-files';
+      f.textContent = files;
+      msg.appendChild(f);
+    }
+    history.appendChild(msg);
+    // Trim old messages
+    while (history.children.length > MAX_HISTORY) {
+      history.removeChild(history.firstChild);
+    }
+    history.scrollTop = history.scrollHeight;
+  }
 
   function say(text, muted) {
     bubbleText.textContent = text;
@@ -503,6 +557,10 @@
 
       if (real.length > seenEvents) {
         if (phase !== 'working') {
+          // Push previous done message to history before starting new task
+          if (phase === 'done' || phase === 'ready') {
+            pushToHistory(bubbleText.textContent, bubbleFiles.textContent);
+          }
           turnEvents = [];
           phase = 'working';
           avatarWorking();
