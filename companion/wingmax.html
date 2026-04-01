@@ -364,16 +364,23 @@
   }
 
   // ── Done commentary (what Claude did) ──
+  function unique(arr) {
+    var seen = {};
+    return arr.filter(function(x) { return seen[x] ? false : (seen[x] = true); });
+  }
+
   function comment(evts) {
-    var created = [], edited = [], hasRead = false, hasCmd = false, hasSearch = false, hasWeb = false;
+    var createdRaw = [], editedRaw = [], hasRead = false, hasCmd = false, hasSearch = false, hasWeb = false;
     evts.forEach(function(e) {
-      if (e.type === 'file_create' && e.detail) created.push(e.detail);
-      if (e.type === 'file_edit' && e.detail) edited.push(e.detail);
+      if (e.type === 'file_create' && e.detail) createdRaw.push(e.detail);
+      if (e.type === 'file_edit' && e.detail) editedRaw.push(e.detail);
       if (e.type === 'file_read') hasRead = true;
       if (e.type === 'command') hasCmd = true;
       if (e.type === 'search') hasSearch = true;
       if (e.type === 'web') hasWeb = true;
     });
+    var created = unique(createdRaw);
+    var edited = unique(editedRaw);
 
     var hasHtml = created.some(function(f) { return f.endsWith('.html'); });
 
@@ -420,22 +427,71 @@
         ]);
       return 'All done!';
     } else {
-      // Intermediate mode: only speak when there's something genuinely useful to say.
-      // File changes are worth naming. Everything else — you can see it in the terminal.
-      var allFiles = created.concat(edited);
+      // Intermediate mode: sound like a mate, add insight, suggest workflow.
+      // Count events for context
+      var readCount = evts.filter(function(e) { return e.type === 'file_read'; }).length;
+      var cmdCount = evts.filter(function(e) { return e.type === 'command'; }).length;
+      var totalEvts = evts.length;
+
       if (hasHtml)
-        return 'Built ' + created.filter(function(f) { return f.endsWith('.html'); }).join(', ') + ' \u2014 preview below.';
+        return pick([
+          'Nice \u2014 you\u2019ve got a live page. Check the preview below.',
+          'Website\u2019s up. Have a look below \u2014 hit refresh if you change it.',
+        ]);
       if (created.length > 0 && edited.length > 0)
-        return 'Created ' + created.join(', ') + '. Edited ' + edited.join(', ') + '.';
+        return pick([
+          'New files plus edits \u2014 that was a proper chunk of work. Good time to /commit.',
+          'Created and edited in one go. Claude read first, then changed \u2014 that\u2019s its standard play.',
+        ]);
+      if (created.length > 0 && readCount >= 3)
+        return pick([
+          'Claude checked what was there, then built on top of it. Smart \u2014 less chance of clashing with existing code.',
+          'Read a few files first, then created new ones. That read-before-write habit is worth copying.',
+        ]);
       if (created.length > 0)
-        return 'Created ' + created.join(', ') + '.';
+        return pick([
+          'New file' + (created.length > 1 ? 's' : '') + ' on disk. Worth a look \u2014 then tell Claude what to change.',
+          'That\u2019s saved locally. You own it now \u2014 Claude can\u2019t change it without asking.',
+        ]);
+      if (edited.length > 0 && readCount >= 3)
+        return pick([
+          'Read a bunch of files, then made targeted edits. That\u2019s the pattern \u2014 Claude always checks context first.',
+          'Careful approach \u2014 read first, edit second. If you want to see exactly what changed, try: check git diff',
+        ]);
+      if (edited.length > 0 && totalEvts > 8)
+        return pick([
+          'Big edit session. Might be worth a /commit before moving on \u2014 gives you a save point.',
+          'Lot of changes there. Type /diff if you want to review before committing.',
+        ]);
       if (edited.length > 0)
-        return 'Edited ' + edited.join(', ') + '.';
-      if (hasWeb && (hasRead || hasSearch))
-        return 'Checked the web and your files. No changes made.';
-      // For read-only, command-only, or search-only turns: say nothing useful happened.
-      // An empty string means "don't update the bubble" — keep showing the previous message.
-      return '';
+        return pick([
+          'Quick edit done. If it\u2019s not right, just say \u2014 Claude can undo or try differently.',
+          'Changes made. Claude only touched what it needed to. Check the diff if you\u2019re curious.',
+        ]);
+      if (hasWeb)
+        return pick([
+          'Claude went and looked something up. Useful when docs might be out of date.',
+          'Web lookup done. Claude does this when it wants current info rather than guessing.',
+        ]);
+      if (readCount >= 6)
+        return pick([
+          'Big exploration pass \u2014 Claude\u2019s mapping out the codebase. Normal for a new project or big task.',
+          'Claude read a lot of files. It does this to build context \u2014 better answers come from understanding the full picture.',
+        ]);
+      if (cmdCount >= 2)
+        return pick([
+          'Ran some commands. If anything looks off in the terminal, you can always tell Claude to undo.',
+          'Setup work done. Claude uses shell commands for installs, builds, and checks.',
+        ]);
+      // For quiet turns, show a useful CC tip instead of nothing
+      return pick([
+        'Tip: you can type /compact when the conversation gets long. Frees up context for better answers.',
+        'Tip: Claude remembers what you\u2019ve done this session. Reference earlier work by name.',
+        'Tip: if Claude\u2019s going the wrong direction, just interrupt. Say what you actually want.',
+        'Tip: /commit saves your work to git. Good habit after each chunk of progress.',
+        'Tip: you can ask Claude to explain any file \u2014 just say "explain [filename]".',
+        'Tip: Claude works best with specific instructions. "Make the button blue" beats "improve the UI".',
+      ]);
     }
   }
 
@@ -577,7 +633,8 @@
       if (real.length > seenEvents) {
         if (phase !== 'working') {
           // Push previous done message to history before starting new task
-          if (phase === 'done' || phase === 'ready') {
+          // Don't push the ready/welcome messages — they're not useful history
+          if (phase === 'done') {
             pushToHistory(bubbleText.textContent, bubbleFiles.textContent);
           }
           turnEvents = [];
