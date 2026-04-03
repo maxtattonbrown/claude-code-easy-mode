@@ -33,7 +33,7 @@ if [[ "$1" == "--uninstall" ]]; then
   elif [[ -f "$SETTINGS_FILE" ]]; then
     # No backup means we created settings.json fresh — remove our keys
     if command -v jq &>/dev/null; then
-      jq 'del(.statusLine) | del(.enabledPlugins["frontend-design@claude-plugins-official"]) | del(.enabledPlugins["document-skills@anthropic-agent-skills"]) | del(.enabledPlugins["explanatory-output-style@claude-code-plugins"]) | if .enabledPlugins == {} then del(.enabledPlugins) else . end | if . == {} then empty else . end' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" 2>/dev/null
+      jq 'del(.theme) | del(.statusLine) | del(.enabledPlugins["frontend-design@claude-plugins-official"]) | del(.enabledPlugins["document-skills@anthropic-agent-skills"]) | del(.enabledPlugins["explanatory-output-style@claude-code-plugins"]) | if .enabledPlugins == {} then del(.enabledPlugins) else . end | if . == {} then empty else . end' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" 2>/dev/null
       if [[ -s "${SETTINGS_FILE}.tmp" ]]; then
         mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
       else
@@ -44,6 +44,7 @@ if [[ "$1" == "--uninstall" ]]; then
 import json, sys, os
 p = '$SETTINGS_FILE'
 with open(p) as f: s = json.load(f)
+s.pop('theme', None)
 s.pop('statusLine', None)
 ep = s.get('enabledPlugins', {})
 for k in ['frontend-design@claude-plugins-official','document-skills@anthropic-agent-skills','explanatory-output-style@claude-code-plugins']:
@@ -286,6 +287,7 @@ fi
 if command -v jq &>/dev/null; then
   if [[ -f "$SETTINGS_FILE" ]]; then
     jq --arg cmd "$STATUSLINE_FILE" '
+      .theme = "light" |
       .statusLine = {"type": "command", "command": $cmd, "padding": 0} |
       .enabledPlugins = ((.enabledPlugins // {}) + {
         "frontend-design@claude-plugins-official": true,
@@ -295,6 +297,7 @@ if command -v jq &>/dev/null; then
     ' "$SETTINGS_FILE" > "${SETTINGS_FILE}.tmp" && mv "${SETTINGS_FILE}.tmp" "$SETTINGS_FILE"
   else
     jq -n --arg cmd "$STATUSLINE_FILE" '{
+      theme: "light",
       statusLine: {type: "command", command: $cmd, padding: 0},
       enabledPlugins: {
         "frontend-design@claude-plugins-official": true,
@@ -311,6 +314,7 @@ settings = {}
 if os.path.exists(settings_path):
     with open(settings_path) as f:
         settings = json.load(f)
+settings["theme"] = "light"
 settings["statusLine"] = {"type": "command", "command": cmd_path, "padding": 0}
 plugins = settings.get("enabledPlugins", {})
 plugins["frontend-design@claude-plugins-official"] = True
@@ -338,5 +342,6 @@ echo -e "  ${D}To undo everything later, see the README at${R}"
 echo -e "  ${D}github.com/maxtattonbrown/claude-code-easy-mode${R}"
 echo ""
 echo -e "  ${G}→${R} Type ${C}claude${R} right here and press Enter."
-echo -e "    Then type ${C}/welcome${R} for a friendly introduction."
+echo -e "    Then type ${C}/welcome${R} for a friendly introduction,"
+echo -e "    or ${C}/powerup${R} to see what Claude Code can do."
 echo ""

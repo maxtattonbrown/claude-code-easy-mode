@@ -15,13 +15,17 @@ Start with a short, friendly welcome. Then give them exactly three things to try
 
 "Welcome! You're in Claude Code — think of it as a chat with an AI that can actually build things for you.
 
+You should see a page called **Wingman** in your browser. That's your companion — it shows you what I'm doing behind the scenes as we work together. Keep it open alongside this window.
+
 Here are three things to try right now:
 
 1. **Say what you want to make** — "Build me a simple website about space" or "Make a calculator app"
 2. **Ask about any code** — "Explain what this file does" or "What does this error mean?"
 3. **Ask for changes** — "Make the background blue" or "Add a contact form"
 
-You can't break anything. If something goes wrong, just say "undo that" and I'll fix it."
+You can't break anything. If something goes wrong, just say "undo that" and I'll fix it.
+
+When you're ready to explore more, type **/powerup** — it'll show you what else Claude Code can do, with live demos right here in the terminal."
 
 ## Rules
 
